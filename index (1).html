@@ -1,0 +1,742 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1.0">
+<title>Embed / Expose — HoCC Defining Divergence</title>
+<link href="https://fonts.googleapis.com/css2?family=DM+Mono:wght@400;500&family=DM+Serif+Display:ital@0;1&display=swap" rel="stylesheet">
+<style>
+*{margin:0;padding:0;box-sizing:border-box}
+html,body{width:100%;height:100%;overflow:hidden;background:#050403}
+canvas{display:block;position:fixed;inset:0}
+#legend{
+  position:fixed;bottom:1.4rem;left:1.5rem;
+  background:rgba(5,4,3,.9);
+  border:1px solid rgba(255,255,255,.07);
+  border-radius:5px;padding:1rem 1.25rem;
+  z-index:100;backdrop-filter:blur(10px);
+  min-width:260px;
+}
+.leg-title{font-family:'DM Mono',monospace;font-size:.55rem;letter-spacing:.22em;
+  text-transform:uppercase;color:#5a5248;margin-bottom:.85rem}
+.leg-section{margin-bottom:.75rem}
+.leg-sub{font-family:'DM Mono',monospace;font-size:.5rem;letter-spacing:.16em;
+  text-transform:uppercase;color:#3a3530;margin-bottom:.45rem}
+.leg-desc{font-size:.5rem;color:#3a3430;margin-top:.15rem;line-height:1.4;letter-spacing:.03em}
+.leg-row{display:flex;align-items:flex-start;gap:.55rem;margin-bottom:.5rem;
+  font-family:'DM Mono',monospace;font-size:.58rem;color:#706050}
+.leg-dot{width:10px;height:10px;border-radius:50%;flex-shrink:0}
+.leg-line{width:22px;height:1.5px;flex-shrink:0}
+.leg-dash{width:22px;height:0;border-bottom:1.5px dashed;flex-shrink:0}
+.leg-peak{width:14px;height:14px;flex-shrink:0;clip-path:polygon(50% 0%,100% 100%,0% 100%);
+  background:rgba(212,145,74,.5)}
+.leg-valley{width:14px;height:14px;flex-shrink:0;clip-path:polygon(0% 0%,100% 0%,50% 100%);
+  background:rgba(58,143,196,.5)}
+.leg-ax{display:grid;grid-template-columns:auto 1fr;gap:.28rem .6rem;
+  font-family:'DM Mono',monospace;font-size:.52rem;color:#504540;margin-top:.2rem}
+.leg-ax-key{color:#6a6050;text-align:right}
+
+#tip{
+  position:fixed;z-index:300;pointer-events:none;
+  opacity:0;transition:opacity .18s;
+  max-width:280px;
+}
+#tip.pinned{
+  pointer-events:auto;
+  opacity:1 !important;
+}
+#tip.pinned .tip-card{
+  border-color:rgba(255,255,255,.22);
+  box-shadow:0 8px 40px rgba(0,0,0,.85),0 0 0 1px rgba(255,255,255,.08);
+}
+.tip-pin-bar{
+  display:none;
+  align-items:center;justify-content:space-between;
+  padding:.28rem .65rem .18rem;
+  font-family:'DM Mono',monospace;font-size:.48rem;
+  letter-spacing:.12em;text-transform:uppercase;
+  color:#3a3428;border-bottom:1px solid rgba(255,255,255,.06);
+}
+#tip.pinned .tip-pin-bar{display:flex}
+.tip-pin-label{color:#504838}
+.tip-close{
+  background:none;border:none;cursor:pointer;
+  font-size:.75rem;color:#504838;padding:0 .1rem;
+  line-height:1;transition:color .12s;
+}
+.tip-close:hover{color:#c0a870}
+.tip-card{
+  background:rgba(8,7,5,.97);
+  border:1px solid rgba(255,255,255,.1);
+  border-radius:5px;
+  overflow:hidden;
+  backdrop-filter:blur(16px);
+  box-shadow:0 8px 40px rgba(0,0,0,.7);
+}
+.tip-img{
+  width:100%;height:130px;
+  object-fit:cover;display:block;
+  background:#111;
+}
+.tip-img-fb{
+  width:100%;height:130px;
+  display:flex;align-items:center;justify-content:center;
+  flex-direction:column;gap:.3rem;
+}
+.tip-img-yr{font-family:'DM Serif Display',serif;font-size:2rem;opacity:.3;line-height:1}
+.tip-img-ttl{font-family:'DM Mono',monospace;font-size:.52rem;opacity:.4;
+  text-align:center;padding:0 .5rem;line-height:1.4;letter-spacing:.04em}
+.tip-body{padding:.65rem .8rem .7rem}
+.tip-artist{font-family:'DM Mono',monospace;font-size:.56rem;
+  letter-spacing:.07em;text-transform:uppercase;margin-bottom:.08rem}
+.tip-title{font-family:'DM Serif Display',serif;font-style:italic;
+  font-size:.9rem;color:#d8d0b8;line-height:1.2;margin-bottom:.22rem}
+.tip-year{font-family:'DM Mono',monospace;font-size:.54rem;color:#605848;margin-bottom:.45rem}
+.tip-rule{height:1px;background:rgba(255,255,255,.07);margin-bottom:.45rem}
+.tip-desc{font-size:.72rem;color:#8a8070;line-height:1.65;margin-bottom:.45rem;
+  font-family:'DM Mono',monospace}
+.tip-mat-lbl{font-family:'DM Mono',monospace;font-size:.48rem;letter-spacing:.14em;
+  text-transform:uppercase;color:#4a4438;margin-bottom:.2rem}
+.tip-mat{font-family:'DM Mono',monospace;font-size:.58rem;color:#5a5048;
+  line-height:1.6;margin-bottom:.5rem}
+.tip-link{display:inline-flex;align-items:center;gap:.35rem;
+  font-family:'DM Mono',monospace;font-size:.56rem;text-decoration:none;
+  padding:.22rem .55rem;border-radius:3px;border:1px solid;
+  transition:opacity .15s;pointer-events:auto}
+.tip-link:hover{opacity:.75}
+.tip-t1 .tip-artist,.tip-t1 .tip-link{color:#d4914a;border-color:rgba(212,145,74,.3)}
+.tip-t2 .tip-artist,.tip-t2 .tip-link{color:#3a8fc4;border-color:rgba(58,143,196,.3)}
+.tip-th .tip-artist,.tip-th .tip-link{color:#9a5abf;border-color:rgba(154,90,191,.3)}
+.tip-t1 .tip-img-yr{color:#d4914a}
+.tip-t2 .tip-img-yr{color:#3a8fc4}
+.tip-th .tip-img-yr{color:#9a5abf}
+
+#controls{
+  position:fixed;top:1.2rem;right:1.4rem;
+  display:flex;gap:.5rem;z-index:100;
+}
+.cb{font-family:'DM Mono',monospace;font-size:.54rem;letter-spacing:.1em;
+  text-transform:uppercase;padding:.25rem .65rem;
+  border:1px solid rgba(255,255,255,.1);border-radius:3px;
+  background:rgba(8,7,5,.85);color:#60584a;cursor:pointer;
+  transition:all .15s;backdrop-filter:blur(4px)}
+.cb:hover{color:#a09070;border-color:rgba(255,255,255,.2)}
+.cb.on{color:#c0a870;border-color:rgba(200,170,80,.3);background:rgba(200,170,80,.07)}
+
+.ax-label{position:fixed;z-index:50;font-family:'DM Mono',monospace;
+  font-size:.48rem;letter-spacing:.12em;text-transform:uppercase;
+  color:rgba(90,80,60,.55);pointer-events:none;
+  transform:translate(-50%,-50%);white-space:nowrap}
+</style>
+</head>
+<body>
+<canvas id="c"></canvas>
+
+<div id="legend">
+  <div class="leg-title">Embed / Expose</div>
+  <div class="leg-section">
+    <div class="leg-sub">Topology</div>
+    <div class="leg-row"><div class="leg-peak" style="margin-top:.2rem"></div><div><div>Trajectory I — Seamlessness</div><div class="leg-desc">Infrastructure becomes form by disappearing into experience. The system is felt, not seen. Tends toward product.</div></div></div>
+    <div class="leg-row"><div class="leg-valley" style="margin-top:.2rem"></div><div><div>Trajectory II — Exposure</div><div class="leg-desc">Infrastructure becomes form by appearing as itself. The system is seen, not just felt. Tends toward critical art.</div></div></div>
+    <div class="leg-row"><div class="leg-dot" style="background:#9a5abf;box-shadow:0 0 5px #9a5abf;margin-top:.2rem"></div><div><div>Hybrid — AARON</div><div class="leg-desc">Production T2, reception T1. Two trajectories at different layers.</div></div></div>
+  </div>
+  <div class="leg-section">
+    <div class="leg-sub">Connections</div>
+    <div class="leg-row"><div class="leg-line" style="background:rgba(212,145,74,.5)"></div>T-I lineage</div>
+    <div class="leg-row"><div class="leg-line" style="background:rgba(58,143,196,.5)"></div>T-II lineage</div>
+    <div class="leg-row"><div class="leg-dash" style="border-color:rgba(180,160,120,.4)"></div>Cross-trajectory</div>
+  </div>
+  <div class="leg-section">
+    <div class="leg-sub">Axes</div>
+    <div class="leg-ax">
+      <span class="leg-ax-key">X →</span><span>Time (1940–2022)</span>
+      <span class="leg-ax-key">Y ↑</span><span>Abstraction layer</span>
+      <span class="leg-ax-key">Z ↓</span><span>Scale (users)</span>
+    </div>
+  </div>
+  <div style="margin-top:.5rem;font-family:'DM Mono',monospace;font-size:.48rem;color:#3a3430;letter-spacing:.08em">
+    hover to preview · click to pin + open link · esc to dismiss
+  </div>
+</div>
+
+<div id="controls">
+  <button class="cb on" id="bRot">Auto-rotate</button>
+  <button class="cb on" id="bConn">Connections</button>
+  <button class="cb" id="bReset">Reset view</button>
+</div>
+
+<div id="tip"><div class="tip-pin-bar"><span class="tip-pin-label">pinned — click link below</span><button class="tip-close" id="tipClose">✕</button></div><div class="tip-card" id="tipCard"></div></div>
+
+<script src="https://cdn.jsdelivr.net/npm/three@0.128.0/build/three.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/controls/OrbitControls.js"></script>
+<script>
+/* ─── DATA ─────────────────────────────────────── */
+const WORKS=[
+  {id:'fantasia',  title:'Fantasia — Fantasound',   artist:'Walt Disney Productions',yr:1940,ly:5,rc:.88,tr:1,
+   desc:'Every technical layer absorbed into total psychological immersion. Technicolor, animation, nine-channel Fantasound audio: all designed so the apparatus forgets itself.',
+   mat:'Technicolor 3-strip film · RCA Fantasound 9-ch audio · 33 stage speakers + 65 house speakers',
+   link:'https://en.wikipedia.org/wiki/Fantasound',
+   img:'https://upload.wikimedia.org/wikipedia/commons/thumb/b/bf/Fantasia-1940-poster.jpg/400px-Fantasia-1940-poster.jpg'},
+
+  {id:'whitney',   title:'Permutations',            artist:'John Whitney Sr.',yr:1966,ly:5,rc:.18,tr:1,
+   desc:'Differential motion equations produce abstract visual music. The organic-looking transformations conceal their mathematics behind the sensation of natural growth.',
+   mat:'IBM 360 mainframe · modified WWII anti-aircraft gun director (analog-digital hybrid) · 16mm film recorder',
+   link:'https://www.centerforvisualmusic.org/Whitney.html',img:''},
+
+  {id:'schwartz',  title:'Pixillation',             artist:'Lillian Schwartz',yr:1970,ly:5,rc:.14,tr:1,
+   desc:'One of the first color computer-animated films. The BEFLIX pipeline is consumed into audio-visual rhythm and color, computation invisible inside the work\'s affect.',
+   mat:'BEFLIX language (Bell Labs) · IBM 7094 · custom film recorder · 16mm color film · Risset electronic music',
+   link:'https://collections.vam.ac.uk/item/O205546/pixillation-photograph-schwartz-lillian/',img:''},
+
+  {id:'videoplace',title:'Videoplace',              artist:'Myron Krueger',yr:1974,ly:5,rc:.22,tr:1,
+   desc:'Real-time tracking projects visitors\' silhouettes alongside computer-generated creatures — the first "artificial reality." Tracking pipeline entirely invisible; body\'s responsiveness is the only perceptible layer.',
+   mat:'Custom real-time video hardware · B&W cameras · video projectors · PDP-11 · custom software (GRIP, CRITTER, INDIVIDEO)',
+   link:'https://en.wikipedia.org/wiki/Videoplace',img:''},
+
+  {id:'mac',       title:'Macintosh GUI — System 1.0',artist:'Apple Computer (Kare, Atkinson, Hertzfeld)',yr:1984,ly:4,rc:.97,tr:1,
+   desc:'Every layer below the interface absorbed into spatial metaphor so complete a generation of users never encountered the word "file path." The UI layer closes as a default.',
+   mat:'Motorola 68000 8MHz · 128KB RAM · 512×342 1-bit display · System 1.0 (68000 asm + Pascal) · MacPaint · Finder',
+   link:'https://en.wikipedia.org/wiki/Macintosh_128K',
+   img:'https://upload.wikimedia.org/wikipedia/commons/thumb/e/e3/Macintosh_128k_transparency.png/400px-Macintosh_128k_transparency.png'},
+
+  {id:'luxo',      title:'Luxo Jr.',                artist:'John Lasseter / Pixar',yr:1986,ly:5,rc:.68,tr:1,
+   desc:'Rendering pipeline, physically-based light simulation, and inverse kinematics are consumed entirely into the experience of two lamps and a ball. Infrastructure disappears into emotion.',
+   mat:'Custom Reyes rendering architecture · Cray X-MP · physically-based area light simulation · custom IK · 35mm film',
+   link:'https://www.pixar.com/luxo-jr',
+   img:'https://upload.wikimedia.org/wikipedia/en/thumb/f/f4/Luxo_jr.jpg/400px-Luxo_jr.jpg'},
+
+  {id:'osmose',    title:'Osmose',                  artist:'Char Davies / Softimage',yr:1995,ly:5,rc:.22,tr:1,
+   desc:'Breath depth and body balance replace all conventional interaction, deliberately dissolving the apparatus into bodily experience. The computational substrate is designed to be imperceptible.',
+   mat:'SGI Onyx Reality Engine2 · VR4 HMD modified · breath-depth + balance sensors · custom real-time OpenGL · live video mixer',
+   link:'https://www.immersence.com/osmose/',img:''},
+
+  {id:'teamlab',   title:'Crystal Universe',        artist:'teamLab',yr:2015,ly:5,rc:.72,tr:1,
+   desc:'60,000 LEDs respond collectively to visitor presence via distributed computation. The sensor network, physics simulation, and LED control architecture are wholly absorbed into collective spatial immersion.',
+   mat:'60,000+ individually addressable LEDs · distributed sensor array · real-time particle physics engine · mirrored surfaces',
+   link:'https://www.teamlab.art/w/crystal_universe/',img:''},
+
+  {id:'oculus',    title:'Oculus Rift CV1',         artist:'Palmer Luckey / Oculus VR',yr:2016,ly:5,rc:.94,tr:1,
+   desc:'T1 at its philosophical extreme: replacing the default perceptual environment entirely. The Krueger and Davies lineage of total presence is completed at consumer scale.',
+   mat:'Two 1080×1200 OLEDs @ 90Hz · Fresnel lenses · infrared constellation tracking · 6DOF · HDMI + USB 3.0',
+   link:'https://en.wikipedia.org/wiki/Oculus_Rift#Rift_CV1',
+   img:'https://upload.wikimedia.org/wikipedia/commons/thumb/7/7e/Oculus-Rift-CV1-Headset-Front.jpg/400px-Oculus-Rift-CV1-Headset-Front.jpg'},
+
+  {id:'anadol',    title:'Unsupervised',            artist:'Refik Anadol Studio',yr:2022,ly:5,rc:.55,tr:1,
+   desc:'MoMA\'s 200-year digitized collection is projected as latent-space hallucination in the museum lobby. Training data, model architecture, and inference are all consumed into chromatic spectacle.',
+   mat:'Custom GAN/diffusion hybrid · MoMA dataset (200,000+ works) · GPU cluster · real-time rendering · large-format LED wall',
+   link:'https://www.moma.org/calendar/exhibitions/5535',img:''},
+
+  {id:'midjourney',title:'Midjourney (v4)',         artist:'Midjourney Inc. (David Holz)',yr:2022,ly:4,rc:.96,tr:1,
+   desc:'The entire diffusion pipeline is collapsed into a Discord text prompt, the same formal operation as the Mac GUI 38 years earlier at the model layer. Total power for total opacity.',
+   mat:'CLIP encoder · UNET diffusion · iterative denoising · aesthetic reward model · thousands of A100s · Discord interface',
+   link:'https://en.wikipedia.org/wiki/Midjourney',img:'https://upload.wikimedia.org/wikipedia/commons/thumb/e/e6/Midjourney_Emblem.png/400px-Midjourney_Emblem.png'},
+
+  /* T2 */
+  {id:'paik',      title:'Magnet TV',               artist:'Nam June Paik',yr:1965,ly:0,rc:.10,tr:2,
+   desc:'A permanent magnet deflects the CRT\'s electron beam, the display hardware\'s live computation, making electromagnetic constraints visible as real-time form. The TV\'s designed function is to absorb its processing into seamless image; Paik interferes at the hardware layer.',
+   mat:'12" black-and-white RCA CRT television · permanent magnet · modified internal circuitry (yoke partially disconnected)',
+   link:'https://www.sfmoma.org/artwork/96.281/',img:''},
+
+  {id:'nake',      title:'Hommage à Paul Klee',     artist:'Frieder Nake',yr:1965,ly:2,rc:.05,tr:2,
+   desc:'Iterated geometric subdivision with controlled random variation. The rule-set is the work\'s primary subject and the drawing is the trace of the algorithm\'s execution made legible.',
+   mat:'Telefunken TR4 mainframe · Zuse Graphomat Z64 flatbed plotter · black ink on paper · ALGOL',
+   link:'https://en.wikipedia.org/wiki/Frieder_Nake',img:''},
+
+  {id:'nees',      title:'Schotter',                artist:'Georg Nees',yr:1968,ly:2,rc:.06,tr:2,
+   desc:'A progressive disorder function maps its parameter space directly onto the visual field. The image is the direct trace of the algorithm behaving, an execution of a rule rather than a representation of one.',
+   mat:'Siemens 4004 mainframe · Zuse Graphomat Z64 plotter · black ink on paper · ALGOL 60 / Bense\'s Stuttgart Generative Aesthetics',
+   link:'https://collections.vam.ac.uk/item/O221321/schotter-print-nees-georg/',img:''},
+
+  {id:'molnar',    title:'Interruptions',           artist:'Vera Molnár',yr:1969,ly:2,rc:.08,tr:2,
+   desc:'"1% disorder" — Molnár introduces calculated rule violations into rigid routines. The algorithm\'s deviation from its own defaults is the form; the rule-set\'s assumptions become the visible subject.',
+   mat:'IBM 360 · flatbed plotter · black ink on paper · FORTRAN',
+   link:'https://en.wikipedia.org/wiki/Vera_Moln%C3%A1r',img:''},
+
+  {id:'aaron',     title:'AARON',                   artist:'Harold Cohen',yr:1970,ly:2.6,rc:.22,tr:0,
+   desc:'The making is T2: the rule-set was built from scratch and remained fully legible to Cohen. The output is T1: paintings designed to produce aesthetic experience that recedes behind the imagery. Two trajectories coexist at different layers of the same object.',
+   mat:'Various mainframes (1968–2016) · custom robotic drawing arm · plotters · acrylic paint · LISP · rule-based expert system',
+   link:'https://whitney.org/exhibitions/harold-cohen-aaron',img:''},
+
+  {id:'vasulka',   title:'Machine Vision',          artist:'Steina Vasulka',yr:1978,ly:0,rc:.10,tr:2,
+   desc:'Cameras on motorized pan-tilt devices scan the room without human direction, the camera\'s mechanical scanning logic determining what is seen rather than human vision. The title states the T2 claim directly.',
+   mat:'Two Sony cameras · custom motorized pan-tilt mount · Vasulka video signal processing hardware · raster manipulation devices',
+   link:'http://www.vasulka.org/Steina/Steina_MachineVision/MachineVision.html',img:''},
+
+  {id:'jodi',      title:'wwwwwwwww.jodi.org',      artist:'JODI (Heemskerk & Paesmans)',yr:1995,ly:0.9,rc:.13,tr:2,
+   desc:'The browser\'s markup-to-layout conversion is made to fail publicly, with source code appearing on the rendered page. It is a direct counter-specification to Netscape Navigator released the same year: same protocol, same parser, one divergent design decision.',
+   mat:'Intentionally malformed HTML · Apache · HTTP/1.0 · TCP/IP · any browser (originally Netscape Navigator 1.0) · Unix hosting',
+   link:'http://wwwwwwwww.jodi.org',img:''},
+
+  {id:'lialina',   title:'My Boyfriend Came Back from the War',artist:'Olia Lialina',yr:1996,ly:0.7,rc:.10,tr:2,
+   desc:'HTML framesets become the narrative architecture as the story unfolds through progressive subdivision of the browser window. Where JODI subtracts, Lialina adds: the layout infrastructure is recruited as the form of a story about silence.',
+   mat:'HTML 3.2 frameset · hyperlinks · black-and-white GIF images · plain text · HTTP · Netscape Navigator',
+   link:'http://www.teleportacia.org/war/',img:''},
+
+  {id:'arcangel',  title:'Super Mario Clouds',      artist:'Cory Arcangel',yr:2002,ly:0.8,rc:.28,tr:2,
+   desc:'All game content is removed from a Super Mario Bros. cartridge, leaving only the scrolling cloud sprites against a blue sky. The ROM\'s graphics data is exposed as isolated formal elements and the platform\'s default visual vocabulary becomes the work\'s only content.',
+   mat:'Nintendo NES · Super Mario Bros. ROM (modified) · hand-soldered EPROM replacement · soldering iron · CRT television',
+   link:'https://coryarcangel.com/things-i-made/2002-001-super-mario-clouds',img:''},
+
+  {id:'ikeda',     title:'data.tron',               artist:'Ryoji Ikeda',yr:2008,ly:2,rc:.32,tr:2,
+   desc:'Raw binary data is rendered at installation scale: mathematical sets, error codes, and binary strings. No content sits on top of the infrastructure because the infrastructure is the content.',
+   mat:'Custom real-time software (Max/MSP/Jitter) · Christie projectors · 24-channel audio · data sonification pipeline · server hardware',
+   link:'https://www.ryojiikeda.com/project/datatron/',img:''},
+
+  {id:'menkman',   title:'A Vernacular of File Formats',artist:'Rosa Menkman',yr:2010,ly:0.75,rc:.10,tr:2,
+   desc:'Wrong compression codecs are applied to image data so that each format standard\'s assumptions produce a distinct visual signature. JPEG artifacts become form, H.264 artifacts become form. The constraint is fingerprinted in the corruption it generates.',
+   mat:'Custom compression pipeline (Processing/Java) · JPEG, GIF, BMP, TIFF, H.264 codecs applied incorrectly · video and print output',
+   link:'https://rosa-menkman.blogspot.com/2010/02/vernacular-of-file-formats.html',img:''},
+
+  {id:'akten',     title:'Learning to See',         artist:'Memo Akten',yr:2017,ly:3,rc:.20,tr:2,
+   desc:'A CNN trained on ocean, fire, and foliage processes live camera input in real time. Point it at a crowd and the model sees waves. The training data\'s assumptions are visually present at every moment, the constraints demonstrated live rather than described.',
+   mat:'Custom CNN (TensorFlow) · NVIDIA GPU · live camera · real-time Python/OpenGL rendering · projector · narrow training dataset',
+   link:'https://www.memo.tv/works/learning-to-see/',img:''},
+
+  {id:'ridler',    title:'Myriad (Tulips)',          artist:'Anna Ridler',yr:2018,ly:3,rc:.15,tr:2,
+   desc:'10,000 hand-photographed tulips were curated into a training dataset and a GAN was trained on them, with its bloom state tied to the live Bitcoin price. The 10,000 source photographs are exhibited alongside the generated video, making visible the labor absorbed into the model.',
+   mat:'10,000 hand-photographed tulips · hand-labeled dataset · custom GAN (PyTorch) · NVIDIA GPU cluster · Bitcoin price API · video + prints',
+   link:'https://annaridler.com/myriad-tulips',img:''},
+
+  {id:'herndon',   title:'PROTO',                   artist:'Holly Herndon (with Mat Dryhurst)',yr:2019,ly:3,rc:.48,tr:2,
+   desc:'ML voice model "Spawn" trained on consenting collaborators performed as a named ensemble member. Training data, consent, and assembled-voice nature are the album\'s explicit subject — ML infrastructure as musical content.',
+   mat:'Custom ML voice model · GPU training · Ableton Live · Max/MSP · consenting ensemble vocalists (Herndon, Jlin, others)',
+   link:'https://hollyherndon.com/proto',img:'https://upload.wikimedia.org/wikipedia/en/thumb/e/e7/Holly_Herndon_-_Proto.png/400px-Holly_Herndon_-_Proto.png'},
+];
+
+const CONNS=[
+  /* T1 lineage (amber) */
+  {f:'fantasia', t:'whitney',    ty:1},
+  {f:'whitney',  t:'schwartz',   ty:1},
+  {f:'videoplace',t:'osmose',    ty:1},
+  {f:'osmose',   t:'oculus',     ty:1},
+  {f:'mac',      t:'midjourney', ty:1},
+  {f:'luxo',     t:'teamlab',    ty:1},
+  {f:'teamlab',  t:'anadol',     ty:1},
+  /* T2 lineage (blue) */
+  {f:'nake',     t:'nees',       ty:2},
+  {f:'nees',     t:'molnar',     ty:2},
+  {f:'nees',     t:'ikeda',      ty:2},
+  {f:'paik',     t:'vasulka',    ty:2},
+  {f:'paik',     t:'menkman',    ty:2},
+  {f:'jodi',     t:'lialina',    ty:2},
+  {f:'jodi',     t:'arcangel',   ty:2},
+  {f:'akten',    t:'ridler',     ty:2},
+  {f:'ridler',   t:'herndon',    ty:2},
+  /* Cross (dashed) */
+  {f:'nees',     t:'mac',        ty:0},
+  {f:'aaron',    t:'midjourney', ty:0},
+  {f:'akten',    t:'anadol',     ty:0},
+  {f:'jodi',     t:'osmose',     ty:0},
+  {f:'nake',     t:'whitney',    ty:0},
+  {f:'menkman',  t:'ikeda',      ty:2},
+  {f:'fantasia', t:'videoplace', ty:1},
+  {f:'schwartz', t:'osmose',     ty:1},
+  {f:'aaron',    t:'akten',      ty:0},
+  {f:'herndon',  t:'midjourney', ty:0},
+];
+
+/* ─── SCENE ─────────────────────────────────── */
+const canvas=document.getElementById('c');
+const W=()=>window.innerWidth, H=()=>window.innerHeight;
+const renderer=new THREE.WebGLRenderer({canvas,antialias:true,alpha:false});
+renderer.setPixelRatio(Math.min(window.devicePixelRatio,2));
+renderer.setSize(W(),H());
+renderer.setClearColor(0x050403,1);
+renderer.shadowMap.enabled=false;
+
+const scene=new THREE.Scene();
+const camera=new THREE.PerspectiveCamera(48,W()/H(),.05,400);
+camera.position.set(16,14,22);
+
+const controls=new THREE.OrbitControls(camera,canvas);
+controls.target.set(11,3,4.5);
+controls.enableDamping=true;
+controls.dampingFactor=.055;
+controls.autoRotate=true;
+controls.autoRotateSpeed=.28;
+controls.minDistance=3;
+controls.maxDistance=70;
+controls.update();
+
+/* ─── POSITIONS ─────────────────────────────── */
+function lcg(s){let v=s;return()=>{v=(v*1664525+1013904223)&0xffffffff;return(v>>>0)/0xffffffff}}
+WORKS.forEach((w,i)=>{
+  const r=lcg(i*137+97);
+  w.wx=(w.yr-1935)/87*24+(r()-.5)*.6;
+  w.wy=w.ly*2.0+(r()-.5)*.25;
+  w.wz=w.rc*9+(r()-.5)*.6;
+});
+
+/* ─── TEXTURES ───────────────────────────────── */
+function makeGlowTex(col,size=128){
+  const cv=document.createElement('canvas');cv.width=cv.height=size;
+  const ctx=cv.getContext('2d'),r=size/2;
+  const g=ctx.createRadialGradient(r,r,0,r,r,r);
+  g.addColorStop(0,col+'ff');
+  g.addColorStop(.15,col+'dd');
+  g.addColorStop(.45,col+'55');
+  g.addColorStop(.78,col+'18');
+  g.addColorStop(1,col+'00');
+  ctx.fillStyle=g;ctx.fillRect(0,0,size,size);
+  return new THREE.CanvasTexture(cv);
+}
+const TEX_T1=makeGlowTex('#f0b55e');
+const TEX_T2=makeGlowTex('#55cbf8');
+const TEX_TH=makeGlowTex('#b070e0');
+const TEX_HOV=makeGlowTex('#ffffff',64);
+const TEX_STAR=makeGlowTex('#b0a890',32);
+
+/* ─── BACKGROUND STARS ──────────────────────── */
+(()=>{
+  const n=2800,pos=new Float32Array(n*3);
+  for(let i=0;i<n;i++){
+    pos[i*3]=(Math.random()-.5)*160+11;
+    pos[i*3+1]=(Math.random()-.5)*100+4;
+    pos[i*3+2]=(Math.random()-.5)*120+4.5;
+  }
+  const g=new THREE.BufferGeometry();
+  g.setAttribute('position',new THREE.BufferAttribute(pos,3));
+  scene.add(new THREE.Points(g,new THREE.PointsMaterial({
+    size:.3,map:TEX_STAR,transparent:true,
+    blending:THREE.AdditiveBlending,depthWrite:false,opacity:.28})));
+})();
+
+/* ─── TERRAIN MESH ───────────────────────────── */
+const GRID_W=70,GRID_H=35;
+const terrainGeo=new THREE.PlaneGeometry(30,12,GRID_W-1,GRID_H-1);
+terrainGeo.rotateX(-Math.PI/2);
+terrainGeo.translate(11,0,4.5);
+
+const tpos=terrainGeo.attributes.position;
+const tcol=new Float32Array(tpos.count*3);
+
+for(let i=0;i<tpos.count;i++){
+  const vx=tpos.getX(i),vz=tpos.getZ(i);
+  let h=0,wtotal=0;
+  WORKS.forEach(w=>{
+    const dx=vx-w.wx,dz=vz-w.wz,d2=dx*dx+dz*dz;
+    const sigma2=9,gauss=Math.exp(-d2/sigma2);
+    h+=gauss*w.wy;
+    wtotal+=gauss;
+  });
+  const fh=wtotal>0.001?h/wtotal:0;
+  tpos.setY(i,fh*.18); // very subtle terrain
+  // color: warm for high (T1 maxima), cool for low (T2 minima)
+  const t=Math.max(0,Math.min(1,(fh-0)/10));
+  const r=.14+t*.22,g2=.12+t*.14,b=.32-t*.24;
+  tcol[i*3]=r;tcol[i*3+1]=g2;tcol[i*3+2]=b;
+}
+tpos.needsUpdate=true;
+terrainGeo.setAttribute('color',new THREE.BufferAttribute(tcol,3));
+terrainGeo.computeVertexNormals();
+
+const terrainMat=new THREE.MeshBasicMaterial({
+  vertexColors:true,transparent:true,opacity:.28,side:THREE.DoubleSide});
+scene.add(new THREE.Mesh(terrainGeo,terrainMat));
+
+// Terrain wireframe
+const wfGeo=new THREE.WireframeGeometry(terrainGeo);
+const wfMat=new THREE.LineBasicMaterial({
+  color:0x2a2420,transparent:true,opacity:.2});
+scene.add(new THREE.LineSegments(wfGeo,wfMat));
+
+/* ─── LAYER PLANES ───────────────────────────── */
+// Each layer: distinct hue — warm earth → olive → teal → cobalt → violet → mauve
+const LAYERS=[
+  {y:0,   col:0x3a3a4a,fill:0x0c0c14,name:'Hardware'},
+  {y:6.4, col:0x3a3a4a,fill:0x0c0c14,name:'Algorithm / Code'},
+  {y:9.6, col:0x4a3a38,fill:0x120e0e,name:'App / Model'},
+  {y:12.8,col:0x3a3a4a,fill:0x0c0c14,name:'Interface / UI'},
+  {y:16.0,col:0x4a3a38,fill:0x120e0e,name:'Experience'},
+];
+const layerLbls=[];
+LAYERS.forEach((ld,li)=>{
+  const el=document.createElement('div');
+  el.className='ax-label';el.textContent=ld.name.toUpperCase();
+  el.style.color='#7a7060';
+  el.style.opacity='.82';
+  document.body.appendChild(el);
+  layerLbls.push({el,pos:new THREE.Vector3(-3.5,ld.y,4.5)});
+
+  // Border line only — no filled slab
+  const pts=[
+    new THREE.Vector3(-3,ld.y,-1),
+    new THREE.Vector3(27,ld.y,-1),
+    new THREE.Vector3(27,ld.y,10),
+    new THREE.Vector3(-3,ld.y,10),
+    new THREE.Vector3(-3,ld.y,-1),
+  ];
+  const lg=new THREE.BufferGeometry().setFromPoints(pts);
+  scene.add(new THREE.Line(lg,new THREE.LineBasicMaterial(
+    {color:ld.col,transparent:true,opacity:.32})));
+});
+
+// Year grid lines
+const yrLbls=[];
+[1940,1950,1960,1970,1980,1990,2000,2010,2020].forEach(yr=>{
+  const x=(yr-1935)/87*24;
+  const pts=[
+    new THREE.Vector3(x,-0.5,-1),
+    new THREE.Vector3(x,17,10),
+  ];
+  const g2=new THREE.BufferGeometry().setFromPoints(pts);
+  scene.add(new THREE.Line(g2,new THREE.LineBasicMaterial(
+    {color:0x1e1c18,transparent:true,opacity:.5})));
+  const el=document.createElement('div');
+  el.className='ax-label';el.textContent=String(yr);
+  document.body.appendChild(el);
+  yrLbls.push({el,pos:new THREE.Vector3(x,-1.2,4.5)});
+});
+
+/* ─── CLOSING FRONTIER CURVE ─────────────────── */
+(()=>{
+  const pts=[
+    new THREE.Vector3((1965-1935)/87*24,0,0.9),
+    new THREE.Vector3((1984-1935)/87*24,12.8,8.73),
+    new THREE.Vector3((1995-1935)/87*24,3.2,1.17),
+    new THREE.Vector3((2016-1935)/87*24,9.6,1.8),
+    new THREE.Vector3((2022-1935)/87*24,9.6,2.0),
+  ];
+  const curve=new THREE.CatmullRomCurve3(pts);
+  const cpts=curve.getPoints(90);
+  const cg=new THREE.BufferGeometry().setFromPoints(cpts);
+  scene.add(new THREE.Line(cg,new THREE.LineBasicMaterial(
+    {color:0xc0b080,transparent:true,opacity:.15})));
+})();
+
+/* ─── NODES ──────────────────────────────────── */
+const nodeMeshes=[]; // for raycasting
+const nodeData=[];   // parallel array
+
+const shaderVert=`
+attribute float aSize;
+varying float vDist;
+void main(){
+  vec4 mv=modelViewMatrix*vec4(position,1.);
+  vDist=-mv.z;
+  gl_PointSize=aSize*(350.0/vDist);
+  gl_Position=projectionMatrix*mv;
+}`;
+const shaderFrag=`
+uniform sampler2D uTex;
+void main(){
+  vec4 t=texture2D(uTex,gl_PointCoord);
+  gl_FragColor=t;
+  if(gl_FragColor.a<0.025)discard;
+}`;
+
+function makeNodeGroup(wks,tex,baseSize){
+  const n=wks.length;
+  const pos=new Float32Array(n*3);
+  const sz=new Float32Array(n);
+  wks.forEach((w,i)=>{
+    pos[i*3]=w.wx;pos[i*3+1]=w.wy;pos[i*3+2]=w.wz;
+    sz[i]=baseSize+(w.rc*1.2);
+  });
+  const geo=new THREE.BufferGeometry();
+  geo.setAttribute('position',new THREE.BufferAttribute(pos,3));
+  geo.setAttribute('aSize',new THREE.BufferAttribute(sz,1));
+  const mat=new THREE.ShaderMaterial({
+    uniforms:{uTex:{value:tex}},
+    vertexShader:shaderVert,fragmentShader:shaderFrag,
+    transparent:true,blending:THREE.AdditiveBlending,depthWrite:false,
+  });
+  const pts=new THREE.Points(geo,mat);
+  scene.add(pts);
+  return {pts,geo,wks};
+}
+
+const t1works=WORKS.filter(w=>w.tr===1);
+const t2works=WORKS.filter(w=>w.tr===2);
+const thworks=WORKS.filter(w=>w.tr===0);
+const grp1=makeNodeGroup(t1works,TEX_T1,3.2);
+const grp2=makeNodeGroup(t2works,TEX_T2,3.2);
+const grph=makeNodeGroup(thworks,TEX_TH,3.5);
+const allGroups=[grp1,grp2,grph];
+
+// Hover highlight (single node)
+const hovGeo=new THREE.BufferGeometry();
+hovGeo.setAttribute('position',new THREE.BufferAttribute(new Float32Array(3),3));
+hovGeo.setAttribute('aSize',new THREE.BufferAttribute(new Float32Array([8]),1));
+const hovPts=new THREE.Points(hovGeo,new THREE.ShaderMaterial({
+  uniforms:{uTex:{value:TEX_HOV}},
+  vertexShader:shaderVert,fragmentShader:shaderFrag,
+  transparent:true,blending:THREE.AdditiveBlending,depthWrite:false,
+}));
+hovPts.visible=false;
+scene.add(hovPts);
+
+/* ─── CONNECTIONS ────────────────────────────── */
+const connGroup=new THREE.Group();scene.add(connGroup);
+const byId={};WORKS.forEach(w=>byId[w.id]=w);
+
+function buildConns(){
+  connGroup.clear();
+  CONNS.forEach(({f,t,ty})=>{
+    const wa=byId[f],wb=byId[t];if(!wa||!wb)return;
+    const p0=new THREE.Vector3(wa.wx,wa.wy,wa.wz);
+    const p1=new THREE.Vector3(wb.wx,wb.wy,wb.wz);
+    const mid=p0.clone().add(p1).multiplyScalar(.5);
+    mid.y+=2.5;
+    const curve=new THREE.QuadraticBezierCurve3(p0,mid,p1);
+    const pts2=curve.getPoints(32);
+    const g=new THREE.BufferGeometry().setFromPoints(pts2);
+    const col=ty===1?0xf0b55e:ty===2?0x55cbf8:0xb0a070;
+    const op=ty===0?.38:ty===1?.52:.48;
+    const mat=new THREE.LineBasicMaterial({color:col,transparent:true,opacity:op});
+    if(ty===0){
+      // dashed — simulate by short segments
+      for(let i=0;i<pts2.length-2;i+=2){
+        const sg=new THREE.BufferGeometry().setFromPoints([pts2[i],pts2[i+1]]);
+        connGroup.add(new THREE.Line(sg,mat.clone()));
+      }
+    }else{
+      connGroup.add(new THREE.Line(g,mat));
+    }
+  });
+}
+buildConns();
+
+/* ─── TOOLTIP ────────────────────────────────── */
+const tip=document.getElementById('tip');
+const tipCard=document.getElementById('tipCard');
+const tipCloseBtn=document.getElementById('tipClose');
+let currentWork=null,tipVisible=false,pinnedWork=null;
+
+if(tipCloseBtn) tipCloseBtn.addEventListener('click',()=>{
+  pinnedWork=null;if(tip)tip.classList.remove('pinned');
+  if(!hovWork)hideTip();
+});
+document.addEventListener('keydown',e=>{
+  if(e.key==='Escape'&&pinnedWork){
+    pinnedWork=null;if(tip)tip.classList.remove('pinned');
+    if(!hovWork)hideTip();
+  }
+});
+
+function showTip(w,mx,my){
+  const cls=w.tr===1?'tip-t1':w.tr===2?'tip-t2':'tip-th';
+  const bg=w.tr===1?'40,25,10':w.tr===2?'8,18,32':'20,10,30';
+  const imgHtml=`<div class="tip-img-wrap" style="position:relative;width:100%;height:130px;background:rgba(${bg},.9);overflow:hidden;flex-shrink:0">
+<div class="tip-img-fb" style="position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:.3rem">
+<div class="tip-img-yr">${w.yr}</div>
+<div class="tip-img-ttl">${w.title}</div></div>${w.img?`<img src="${w.img}" alt="" style="position:absolute;inset:0;width:100%;height:100%;object-fit:cover;opacity:0;transition:opacity .3s" onload="this.style.opacity='1'">`:''}</div>`;
+
+  if(!tip||!tipCard)return;
+  tipCard.className=`tip-card ${cls}`;
+  tipCard.innerHTML=`${imgHtml}
+<div class="tip-body">
+  <div class="tip-artist">${w.artist}</div>
+  <div class="tip-title">${w.title}</div>
+  <div class="tip-year">${w.yr}</div>
+  <div class="tip-rule"></div>
+  <div class="tip-desc">${w.desc}</div>
+  <div class="tip-mat-lbl">Materials / Tools</div>
+  <div class="tip-mat">${w.mat}</div>
+  <a class="tip-link" href="${w.link}" target="_blank" rel="noopener">↗ ${w.link.replace(/^https?:\/\//,'').split('/')[0]}</a>
+</div>`;
+
+  const tw=282,th_=420;
+  let tx=mx+18,ty=my-20;
+  if(tx+tw>window.innerWidth-10)tx=mx-tw-12;
+  if(ty+th_>window.innerHeight-10)ty=window.innerHeight-th_-10;
+  if(ty<8)ty=8;
+  if(!tip)return;
+  tip.style.left=tx+'px';tip.style.top=ty+'px';
+  tip.style.opacity='1';tipVisible=true;
+}
+function hideTip(){if(pinnedWork||!tip)return;tip.style.opacity='0';tipVisible=false}
+
+/* ─── RAYCASTING ─────────────────────────────── */
+const raycaster=new THREE.Raycaster();
+raycaster.params.Points={threshold:.5};
+const mouse=new THREE.Vector2(-9,-9);
+let mouseScreen={x:-9,y:-9},hovWork=null;
+
+canvas.addEventListener('mousemove',e=>{
+  mouse.x=(e.clientX/W())*2-1;
+  mouse.y=-(e.clientY/H())*2+1;
+  mouseScreen={x:e.clientX,y:e.clientY};
+  if(hovWork&&!pinnedWork)showTip(hovWork,e.clientX,e.clientY);
+});
+canvas.addEventListener('mouseleave',()=>{if(!pinnedWork){hideTip();hovWork=null;hovPts.visible=false}});
+
+// Click on canvas: if hovering a node, pin the tooltip there
+canvas.addEventListener('click',e=>{
+  if(hovWork){
+    pinnedWork=hovWork;
+    if(tip)tip.classList.add('pinned');
+    showTip(hovWork,e.clientX,e.clientY);
+  } else if(pinnedWork){
+    pinnedWork=null;
+    if(tip)tip.classList.remove('pinned');
+    hideTip();
+  }
+});
+
+function updateHover(){
+  raycaster.setFromCamera(mouse,camera);
+  let found=null,bestD=Infinity;
+  allGroups.forEach(({pts,geo,wks})=>{
+    const hits=raycaster.intersectObject(pts);
+    if(hits.length){
+      const d=hits[0].distanceToRay;
+      if(d<bestD){bestD=d;found={w:wks[hits[0].index],geo};}
+    }
+  });
+  if(found){
+    if(found.w!==hovWork){
+      hovWork=found.w;
+      const p=hovGeo.attributes.position;
+      p.setXYZ(0,found.w.wx,found.w.wy,found.w.wz);p.needsUpdate=true;
+      hovPts.visible=true;
+      if(!pinnedWork)showTip(found.w,mouseScreen.x,mouseScreen.y);
+      canvas.style.cursor='pointer';
+    }
+  }else{
+    if(hovWork){hovWork=null;hovPts.visible=false;if(!pinnedWork)hideTip();canvas.style.cursor='default'}
+  }
+}
+
+/* ─── LABEL PROJECTION ───────────────────────── */
+const tmpV=new THREE.Vector3();
+function updateLabels(){
+  [...layerLbls,...yrLbls].forEach(({el,pos})=>{
+    tmpV.copy(pos).project(camera);
+    const x=(tmpV.x*.5+.5)*W(),y=(1-tmpV.y*.5-.5)*H();
+    if(tmpV.z<1&&x>0&&x<W()&&y>0&&y<H()){
+      el.style.left=x+'px';el.style.top=y+'px';el.style.opacity='1';
+    }else{el.style.opacity='0'}
+  });
+}
+
+/* ─── CONTROLS ───────────────────────────────── */
+document.getElementById('bRot').addEventListener('click',function(){
+  controls.autoRotate=!controls.autoRotate;
+  this.classList.toggle('on',controls.autoRotate);
+});
+document.getElementById('bConn').addEventListener('click',function(){
+  connGroup.visible=!connGroup.visible;
+  this.classList.toggle('on',connGroup.visible);
+});
+document.getElementById('bReset').addEventListener('click',()=>{
+  camera.position.set(16,14,22);
+  controls.target.set(11,3,4.5);controls.update();
+});
+window.addEventListener('resize',()=>{
+  camera.aspect=W()/H();camera.updateProjectionMatrix();
+  renderer.setSize(W(),H());
+});
+
+/* ─── RENDER LOOP ────────────────────────────── */
+function animate(){
+  requestAnimationFrame(animate);
+  controls.update();
+  updateHover();
+  updateLabels();
+  renderer.render(scene,camera);
+}
+animate();
+</script>
+</body>
+</html>
